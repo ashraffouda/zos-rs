@@ -169,7 +169,6 @@ mod test {
         let data = "82a24950c404c0a80100a44d61736bc404ffffff00";
         let data = hex::decode(data).unwrap();
         let net: IPNet = rmp_serde::from_slice(&data).unwrap();
-        println!("{}", net);
         assert!(net.to_string() == "192.168.1.0/24");
 
         // 2a10:b600:0:be77::/64
@@ -177,5 +176,11 @@ mod test {
         let data = hex::decode(data).unwrap();
         let net: IPNet = rmp_serde::from_slice(&data).unwrap();
         assert!(net.to_string() == "2a10:b600:0:be77::/64");
+
+        // 2a10:b600:0:be77:f1d6:fc0:40ad:8b29/64
+        let data = "82a24950c4102a10b6000000be77f1d60fc040ad8b29a44d61736bc410ffffffffffffffff0000000000000000";
+        let data = hex::decode(data).unwrap();
+        let net: IPNet = rmp_serde::from_slice(&data).unwrap();
+        assert!(net.to_string() == "2a10:b600:0:be77:f1d6:fc0:40ad:8b29/64");
     }
 }
