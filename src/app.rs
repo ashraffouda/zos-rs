@@ -3,8 +3,8 @@ use rbus::client::Receiver;
 
 use crate::zos_traits::{
     Capacity, ExitDevice, IdentityManagerStub, NetlinkAddresses, NetworkerStub, OptionPublicConfig,
-    RegistrarStub, StatisticsStub, SystemMonitorStub, Version, VersionMonitorStub, ZOSTimesStat,
-    ZOSVirtualMemory,
+    RegistrarStub, StatisticsStub, SystemMonitorStub, TimesStat, Version, VersionMonitorStub,
+    VirtualMemory,
 };
 
 pub struct Stubs {
@@ -103,7 +103,7 @@ impl App {
         });
     }
     pub async fn poll_memory_usage(&self) {
-        let mut recev: Receiver<ZOSVirtualMemory> = loop {
+        let mut recev: Receiver<VirtualMemory> = loop {
             match self.stubs.sys_monitor.memory().await {
                 Ok(recev) => {
                     break recev;
@@ -134,7 +134,7 @@ impl App {
         });
     }
     pub async fn poll_cpu_usage(&self) {
-        let mut recev: Receiver<ZOSTimesStat> = loop {
+        let mut recev: Receiver<TimesStat> = loop {
             match self.stubs.sys_monitor.cpu().await {
                 Ok(recev) => {
                     break recev;
@@ -167,7 +167,7 @@ impl App {
 
     pub async fn poll_reserved_stream(&self) {
         let mut recev: Receiver<Capacity> = loop {
-            match self.stubs.statistics.reserved_stream().await {
+            match self.stubs.statistics.reserved().await {
                 Ok(recev) => {
                     break recev;
                 }

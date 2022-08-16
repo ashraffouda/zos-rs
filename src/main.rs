@@ -3,8 +3,9 @@ use rbus::{self, client::Receiver};
 use std::net::Ipv6Addr;
 use std::time::Duration;
 use std::{env, net::Ipv4Addr};
-use zos_traits::{NetlinkAddresses, ZOSIPNet};
+use zos_traits::{IPNet, NetlinkAddresses};
 
+mod zos;
 use crate::{
     app::Stubs,
     zos_traits::{
@@ -25,27 +26,22 @@ use crate::zui::run;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     const IDENTITY_MOD: &str = "identityd";
-    let iden_cli = rbus::Client::new("redis://0.0.0.0:6379").await.unwrap();
-    let identity_manager = IdentityManagerStub::new(IDENTITY_MOD, iden_cli);
+    let client = rbus::Client::new("redis://0.0.0.0:6379").await.unwrap();
+    let identity_manager = IdentityManagerStub::new(IDENTITY_MOD, client.clone());
 
-    let ver_cli = rbus::Client::new("redis://0.0.0.0:6379").await.unwrap();
-    let version_monitor = VersionMonitorStub::new(IDENTITY_MOD, ver_cli);
+    let version_monitor = VersionMonitorStub::new(IDENTITY_MOD, client.clone());
 
     const REGISTRAR_MOD: &str = "registrar";
-    let reg_cli = rbus::Client::new("redis://0.0.0.0:6379").await.unwrap();
-    let registrar = RegistrarStub::new(REGISTRAR_MOD, reg_cli);
+    let registrar = RegistrarStub::new(REGISTRAR_MOD, client.clone());
 
     const PROVISION_MOD: &str = "provision";
-    let statistics_cli = rbus::Client::new("redis://0.0.0.0:6379").await.unwrap();
-    let statistics = StatisticsStub::new(PROVISION_MOD, statistics_cli);
+    let statistics = StatisticsStub::new(PROVISION_MOD, client.clone());
 
     const NODE_MOD: &str = "node";
-    let sys_monitor_cli = rbus::Client::new("redis://0.0.0.0:6379").await.unwrap();
-    let sys_monitor = SystemMonitorStub::new(NODE_MOD, sys_monitor_cli);
+    let sys_monitor = SystemMonitorStub::new(NODE_MOD, client.clone());
 
     const NETWORK_MOD: &str = "network";
-    let network_cli = rbus::Client::new("redis://0.0.0.0:6379").await.unwrap();
-    let network = NetworkerStub::new(NETWORK_MOD, network_cli);
+    let network = NetworkerStub::new(NETWORK_MOD, client.clone());
 
     let stubs = Stubs {
         identity_manager,

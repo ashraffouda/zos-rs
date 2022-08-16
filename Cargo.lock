@@ -657,7 +657,7 @@ dependencies = [
  "futures-util",
  "log",
  "macros",
- "rmp-serde",
+ "rmp-serde 0.15.5",
  "serde",
  "serde_bytes",
  "serde_json",
@@ -711,6 +711,17 @@ name = "rmp-serde"
 version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "723ecff9ad04f4ad92fe1c8ca6c20d2196d9286e9c60727c4cb5511629260e9d"
+dependencies = [
+ "byteorder",
+ "rmp",
+ "serde",
+]
+
+[[package]]
+name = "rmp-serde"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25786b0d276110195fa3d6f3f31299900cf71dfbd6c28450f3f58a0e7f7a347e"
 dependencies = [
  "byteorder",
  "rmp",
@@ -1214,11 +1225,14 @@ dependencies = [
  "async-trait",
  "bytes",
  "crossterm",
+ "hex",
  "ipnet",
  "log",
  "psutil",
  "rbus",
+ "rmp-serde 1.1.0",
  "serde",
+ "serde_bytes",
  "serde_with",
  "tokio",
  "tui",

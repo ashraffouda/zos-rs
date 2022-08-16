@@ -1,11 +1,10 @@
-use std::net::{Ipv4Addr, Ipv6Addr};
-
 use anyhow::Result;
 use ipnet::IpNet;
-use psutil::memory::VirtualMemory;
 use rbus::{object, server::Sender};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, Bytes};
+use std::fmt::Display;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 type FarmID = u32;
 
@@ -31,15 +30,17 @@ pub struct PRVersion {
     #[serde(rename = "IsNum")]
     pub is_num: bool,
 }
-impl PRVersion {
-    fn to_string(&self) -> String {
+
+impl Display for PRVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.is_num {
-            format!("{}", self.version_num)
+            write!(f, "{}", self.version_num)
         } else {
-            format!("{}", self.version_str)
+            write!(f, "{}", self.version_str)
         }
     }
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Version {
     #[serde(rename = "Major")]
@@ -53,24 +54,29 @@ pub struct Version {
     #[serde(rename = "Build")]
     pub build: Option<Vec<String>>, //No Precendence
 }
-impl Version {
-    pub fn to_string(&self) -> String {
-        let mut version_str = format!("{}.{}.{}", self.major, self.minor, self.patch);
+
+impl Display for Version {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)?;
+
         if let Some(pre) = &self.pre {
-            version_str = format!("{}_{}", version_str, pre[0].to_string());
+            write!(f, "_{}", pre[0])?;
             for pre_version in pre[1..].iter() {
-                version_str = format!("{}.{}", version_str, pre_version.to_string())
+                write!(f, ".{}", pre_version)?
             }
         }
+
         if let Some(build) = &self.build {
-            version_str = format!("{}+{}", version_str, build[0].to_string());
+            write!(f, "+{}", build[0])?;
             for build_item in build[1..].iter() {
-                version_str = format!("{}.{}", version_str, build_item)
+                write!(f, ".{}", build_item)?;
             }
         }
-        version_str
+
+        Ok(())
     }
 }
+
 #[object(name = "monitor", version = "0.0.1")]
 #[async_trait::async_trait]
 pub trait VersionMonitor {
@@ -99,11 +105,11 @@ pub struct Capacity {
 pub trait Statistics {
     #[rename("ReservedStream")]
     #[stream]
-    async fn reserved_stream(&self, rec: Sender<Capacity>);
+    async fn reserved(&self, rec: Sender<Capacity>);
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct ZOSVirtualMemory {
+pub struct VirtualMemory {
     #[serde(rename = "Total")]
     pub total: u64,
     #[serde(rename = "Available")]
@@ -113,36 +119,27 @@ pub struct ZOSVirtualMemory {
     #[serde(rename = "UsedPercent")]
     pub used_percent: f64,
 }
-impl From<VirtualMemory> for ZOSVirtualMemory {
-    fn from(mem: VirtualMemory) -> Self {
-        ZOSVirtualMemory {
-            total: mem.total(),
-            available: mem.available(),
-            used: mem.used(),
-            used_percent: mem.percent() as f64,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ZOSTimesStat {
+pub struct TimesStat {
     #[serde(rename = "Percent")]
     pub percent: f64,
 }
+
 #[object(name = "system", version = "0.0.1")]
 #[async_trait::async_trait]
 pub trait SystemMonitor {
     #[rename("CPU")]
     #[stream]
-    async fn cpu(&self, rec: Sender<ZOSTimesStat>);
+    async fn cpu(&self, rec: Sender<TimesStat>);
     #[rename("Memory")]
     #[stream]
-    async fn memory(&self, rec: Sender<ZOSVirtualMemory>);
+    async fn memory(&self, rec: Sender<VirtualMemory>);
 }
 
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ZOSIPNet {
+pub struct IPNet {
     #[serde(rename = "IP")]
     #[serde_as(as = "Bytes")]
     pub ip: Vec<u8>,
@@ -151,7 +148,8 @@ pub struct ZOSIPNet {
     #[serde(rename = "Mask")]
     pub mask: Vec<u8>,
 }
-impl ZOSIPNet {
+
+impl IPNet {
     pub fn to_string(&self) -> String {
         let mut ip_str = String::from("");
         if self.ip.len() == 4 {
@@ -183,9 +181,9 @@ impl ZOSIPNet {
         return ip_str.trim().to_string();
     }
 }
-impl From<IpNet> for ZOSIPNet {
+impl From<IpNet> for IPNet {
     fn from(ipnet: IpNet) -> Self {
-        ZOSIPNet {
+        IPNet {
             ip: ipnet.addr().to_string().as_bytes().to_vec(),
             mask: ipnet.netmask().to_string().as_bytes().to_vec(),
         }
@@ -195,9 +193,9 @@ impl From<IpNet> for ZOSIPNet {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptionPublicConfig {
     #[serde(rename = "IPv4")]
-    pub ipv4: ZOSIPNet,
+    pub ipv4: IPNet,
     #[serde(rename = "IPv6")]
-    pub ipv6: ZOSIPNet,
+    pub ipv6: IPNet,
     #[serde(rename = "HasPublicConfig")]
     pub has_public_config: bool,
 }
@@ -228,7 +226,7 @@ impl ExitDevice {
     }
 }
 
-pub type NetlinkAddresses = Vec<ZOSIPNet>;
+pub type NetlinkAddresses = Vec<IPNet>;
 #[object(name = "network", version = "0.0.1")]
 #[async_trait::async_trait]
 pub trait Networker {
