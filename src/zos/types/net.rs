@@ -3,6 +3,7 @@ use serde_bytes::ByteBuf;
 use std::{
     fmt::Display,
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
+    str::FromStr,
 };
 
 /// IP is a Golang compatible IP type
@@ -101,6 +102,7 @@ impl From<u8> for IPMask {
         Self(ByteBuf::from(v))
     }
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IPNet {
     #[serde(rename = "IP")]
@@ -116,9 +118,141 @@ impl Display for IPNet {
     }
 }
 
+/// you should never use this struct except to decode
+/// IPNet structure that can be empty in Go. Because there
+/// is no Option type in Golang, an empty struct in go has
+/// all his attributes "zeroed" hence IP and Mask part of an
+/// empty IPNet is nil. but not the struct itself of course.
+/// hopefully we can avoid this type and similar types in the
+/// future after either completely moving away from Go or
+/// change the go types to use pointers that can be nil
+/// (which is very unsafe refactor)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct GoIPNet {
+    #[serde(rename = "IP")]
+    ip: Option<IP>,
+
+    #[serde(rename = "Mask")]
+    mask: Option<IPMask>,
+}
+
+impl From<GoIPNet> for Option<IPNet> {
+    fn from(o: GoIPNet) -> Self {
+        match o.ip {
+            Some(ip) => match o.mask {
+                Some(mask) => Some(IPNet { ip, mask }),
+                None => None,
+            },
+            None => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub enum InterfaceType {
+    #[serde(rename = "vlan")]
+    VLan,
+    #[serde(rename = "macvlan")]
+    MacVLan,
+    // because in go this can be empty string
+    #[serde(rename = "")]
+    Unknown,
+}
+
+impl Display for InterfaceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::VLan => write!(f, "vlan"),
+            Self::MacVLan => write!(f, "macvlan"),
+            Self::Unknown => write!(f, ""),
+        }
+    }
+}
+
+impl FromStr for InterfaceType {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "vlan" => Ok(Self::VLan),
+            "macvlan" => Ok(Self::MacVLan),
+            "" => Ok(Self::Unknown),
+            _ => Err("unknown interface type"),
+        }
+    }
+}
+
+// internal struct we use to be compatible with go types
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct GoPublicConfig {
+    #[serde(rename = "Type")]
+    typ: InterfaceType,
+    #[serde(rename = "IPv4")]
+    ipv4: GoIPNet,
+    #[serde(rename = "IPv6")]
+    ipv6: GoIPNet,
+    #[serde(rename = "GW4")]
+    gwv4: Option<IP>,
+    #[serde(rename = "GW6")]
+    gwv6: Option<IP>,
+    #[serde(rename = "Domain")]
+    domain: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PublicConfig {
+    pub interface_type: InterfaceType,
+    pub ipv4: Option<IPNet>,
+    pub ipv6: Option<IPNet>,
+    pub gwv4: Option<IP>,
+    pub gwv6: Option<IP>,
+    pub domain: Option<String>,
+}
+
+impl<'de> Deserialize<'de> for PublicConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let config = GoPublicConfig::deserialize(deserializer)?;
+        Ok(Self {
+            interface_type: config.typ,
+            ipv4: config.ipv4.into(),
+            ipv6: config.ipv6.into(),
+            gwv4: config.gwv4,
+            gwv6: config.gwv6,
+            domain: config.domain,
+        })
+    }
+}
+
+/// compatibility struct with go because
+/// we don't have Option in Go we had to
+/// use flags.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OptionPublicConfig {
+    #[serde(flatten)]
+    config: PublicConfig,
+    #[serde(rename = "HasPublicConfig")]
+    is_set: bool,
+}
+
+impl From<OptionPublicConfig> for Option<PublicConfig> {
+    fn from(o: OptionPublicConfig) -> Self {
+        if o.is_set {
+            Some(o.config)
+        } else {
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::{IPMask, IPNet, IP};
+    use serde::de::DeserializeOwned;
+
+    use super::{IPMask, IPNet, InterfaceType, OptionPublicConfig, PublicConfig, IP};
+
     use std::net::IpAddr;
 
     #[test]
@@ -149,38 +283,69 @@ mod test {
         assert!(mask.0.iter().all(|v| *v == 0xff));
     }
 
+    fn decode<I: AsRef<str>, T: DeserializeOwned>(input: I) -> Result<T, rmp_serde::decode::Error> {
+        let data = hex::decode(input.as_ref()).unwrap();
+        // hexdump::hexdump(&data);
+        rmp_serde::from_slice(&data)
+    }
+
     #[test]
     fn test_go_compatibility() {
         // 192.168.1.20 (in a 16 bytes array)
         let data = "c41000000000000000000000ffffc0a80114";
-        let data = hex::decode(data).unwrap();
-        let ip: IP = rmp_serde::from_slice(&data).unwrap();
+        let ip: IP = decode(data).unwrap();
         let ip: IpAddr = ip.into();
         assert!(ip.to_string() == "192.168.1.20");
 
         // 2a10:b600:0:be77:f1d6:fc0:40ad:8b29
         let data = "c4102a10b6000000be77f1d60fc040ad8b29";
-        let data = hex::decode(data).unwrap();
-        let ip: IP = rmp_serde::from_slice(&data).unwrap();
+        let ip: IP = decode(data).unwrap();
         let ip: IpAddr = ip.into();
         assert!(ip.to_string() == "2a10:b600:0:be77:f1d6:fc0:40ad:8b29");
 
         // 192.168.1.0/24 (in ip net the ipv4 is actually in a 4 bytes array)
         let data = "82a24950c404c0a80100a44d61736bc404ffffff00";
-        let data = hex::decode(data).unwrap();
-        let net: IPNet = rmp_serde::from_slice(&data).unwrap();
+        let net: IPNet = decode(data).unwrap();
         assert!(net.to_string() == "192.168.1.0/24");
 
         // 2a10:b600:0:be77::/64
         let data = "82a24950c4102a10b6000000be770000000000000000a44d61736bc410ffffffffffffffff0000000000000000";
-        let data = hex::decode(data).unwrap();
-        let net: IPNet = rmp_serde::from_slice(&data).unwrap();
+        let net: IPNet = decode(data).unwrap();
         assert!(net.to_string() == "2a10:b600:0:be77::/64");
 
         // 2a10:b600:0:be77:f1d6:fc0:40ad:8b29/64
         let data = "82a24950c4102a10b6000000be77f1d60fc040ad8b29a44d61736bc410ffffffffffffffff0000000000000000";
-        let data = hex::decode(data).unwrap();
-        let net: IPNet = rmp_serde::from_slice(&data).unwrap();
+        let net: IPNet = decode(data).unwrap();
         assert!(net.to_string() == "2a10:b600:0:be77:f1d6:fc0:40ad:8b29/64");
+    }
+
+    #[test]
+    fn test_public_config() {
+        //config {vlan 192.168.1.20/32 <nil> 192.168.1.1 <nil> }
+        let data = "86a454797065a4766c616ea44950763482a24950c41000000000000000000000ffffc0a80114a44d61736bc404ffffffffa44950763682a24950c0a44d61736bc0a3475734c41000000000000000000000ffffc0a80101a3475736c0a6446f6d61696ea0";
+        let config: PublicConfig = decode(data).unwrap();
+        assert!(config.interface_type == InterfaceType::VLan);
+        assert!(matches!(config.ipv4, Some(ip) if ip.to_string() == "192.168.1.20/32"));
+        assert!(matches!(config.ipv6, None));
+        assert!(matches!(&config.gwv4, Some(ip) if ip.to_string() == "192.168.1.1"));
+        assert!(matches!(&config.gwv6, None));
+
+        //option config {{vlan 192.168.1.20/32 <nil> 192.168.1.1 <nil> } true}
+        let data = "87a454797065a4766c616ea44950763482a24950c41000000000000000000000ffffc0a80114a44d61736bc404ffffffffa44950763682a24950c0a44d61736bc0a3475734c41000000000000000000000ffffc0a80101a3475736c0a6446f6d61696ea0af4861735075626c6963436f6e666967c3";
+        let config: OptionPublicConfig = decode(data).unwrap();
+        let config: Option<PublicConfig> = config.into();
+        assert!(config.is_some());
+        let config = config.unwrap();
+        assert!(config.interface_type == InterfaceType::VLan);
+        assert!(matches!(config.ipv4, Some(ip) if ip.to_string() == "192.168.1.20/32"));
+        assert!(matches!(config.ipv6, None));
+        assert!(matches!(&config.gwv4, Some(ip) if ip.to_string() == "192.168.1.1"));
+        assert!(matches!(&config.gwv6, None));
+
+        // no config {{ <nil> <nil> <nil> <nil> } false}
+        let data = "87a454797065a0a44950763482a24950c0a44d61736bc0a44950763682a24950c0a44d61736bc0a3475734c0a3475736c0a6446f6d61696ea0af4861735075626c6963436f6e666967c2";
+        let config: OptionPublicConfig = decode(data).unwrap();
+        let config: Option<PublicConfig> = config.into();
+        assert!(config.is_none());
     }
 }
