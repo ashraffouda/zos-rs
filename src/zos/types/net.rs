@@ -247,11 +247,50 @@ impl From<OptionPublicConfig> for Option<PublicConfig> {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct GoExitDevice {
+    // IsSingle is set to true if br-pub
+    // is connected to zos bridge
+    #[serde(rename = "IsSingle")]
+    pub is_single: bool,
+    // IsDual is set to true if br-pub is
+    // connected to a physical nic
+    #[serde(rename = "IsDual")]
+    pub is_dual: bool,
+    // AsDualInterface is set to the physical
+    // interface name if IsDual is true
+    #[serde(rename = "AsDualInterface")]
+    pub as_dual_interface: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum ExitDevice {
+    #[serde(rename = "vlan")]
+    Single,
+    #[serde(rename = "vlan")]
+    Dual(String),
+}
+impl<'de> Deserialize<'de> for ExitDevice {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let exit = GoExitDevice::deserialize(deserializer)?;
+        if exit.is_single {
+            Ok(Self::Single)
+        } else if exit.is_dual {
+            Ok(Self::Dual(exit.as_dual_interface))
+        } else {
+            Err(serde::de::Error::custom("unknown exit interface"))
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use serde::de::DeserializeOwned;
 
-    use super::{IPMask, IPNet, InterfaceType, OptionPublicConfig, PublicConfig, IP};
+    use super::{ExitDevice, IPMask, IPNet, InterfaceType, OptionPublicConfig, PublicConfig, IP};
 
     use std::net::IpAddr;
 
@@ -347,5 +386,24 @@ mod test {
         let config: OptionPublicConfig = decode(data).unwrap();
         let config: Option<PublicConfig> = config.into();
         assert!(config.is_none());
+    }
+
+    #[test]
+    fn test_exit_device() {
+        // single {true false }
+        let data = "83a8497353696e676c65c3a649734475616cc2af41734475616c496e74657266616365a0";
+
+        let exit: ExitDevice = decode(data).unwrap();
+        assert!(matches!(exit, ExitDevice::Single));
+
+        // dual (eth0) {false true eth0}
+        let data =
+            "83a8497353696e676c65c2a649734475616cc3af41734475616c496e74657266616365a465746830";
+        let exit: ExitDevice = decode(data).unwrap();
+        assert!(matches!(exit, ExitDevice::Dual(inf) if inf == "eth0"));
+
+        // bad {false false }
+        let data = "83a8497353696e676c65c2a649734475616cc2af41734475616c496e74657266616365a0";
+        assert!(decode::<_, ExitDevice>(data).is_err());
     }
 }
