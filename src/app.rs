@@ -2,14 +2,14 @@ use anyhow::Result;
 use rbus::client::Receiver;
 
 use crate::{
+    api::{
+        IdentityManagerStub, NetlinkAddresses, NetworkerStub, RegistrarStub, StatisticsStub,
+        SystemMonitorStub, VersionMonitorStub,
+    },
     zos::types::{
         net::{ExitDevice, OptionPublicConfig},
         stats::{Capacity, TimesStat, VirtualMemory},
         version::Version,
-    },
-    zos_traits::{
-        IdentityManagerStub, NetlinkAddresses, NetworkerStub, RegistrarStub, StatisticsStub,
-        SystemMonitorStub, VersionMonitorStub,
     },
 };
 
@@ -40,7 +40,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(stubs: Stubs, enhanced_graphics: bool) -> App {
+    pub fn new(stubs: Stubs) -> App {
         App {
             stubs,
             node_id: Ok(0),

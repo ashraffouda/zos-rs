@@ -12,11 +12,7 @@ use tui::Terminal;
 use crate::app::{App, Stubs};
 use crate::ui;
 
-pub async fn run(
-    stubs: Stubs,
-    tick_rate: Duration,
-    enhanced_graphics: bool,
-) -> Result<(), Box<dyn Error>> {
+pub async fn run(stubs: Stubs, tick_rate: Duration) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -24,8 +20,7 @@ pub async fn run(
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     // create app and run it
-    let app = App::new(stubs, enhanced_graphics);
-    // tokio::spawn(async move { app.poll_version() });
+    let app = App::new(stubs);
     app.poll_version().await;
     app.poll_reserved_stream().await;
     app.poll_cpu_usage().await;

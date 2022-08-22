@@ -45,11 +45,6 @@ where
     };
 
     let text = vec![
-        // Spans::from(""),
-        // Spans::from(r" ____  _____  ___"),
-        // Spans::from(r"(_   )(  _  )/ __)"),
-        // Spans::from(r" / /_  )(_)( \__ \"),
-        // Spans::from(r"(____)(_____)(___/"),
         Spans::from(vec![
             Span::from("Welcome to "),
             Span::styled("Zero-OS", Style::default().fg(Color::Yellow)),

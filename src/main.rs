@@ -1,20 +1,16 @@
-use ipnet::IpNet;
-use rbus::{self, client::Receiver};
-use std::net::Ipv6Addr;
+use rbus;
 use std::time::Duration;
-use std::{env, net::Ipv4Addr};
-use zos_traits::NetlinkAddresses;
 
 mod zos;
 use crate::{
-    app::Stubs,
-    zos_traits::{
+    api::{
         IdentityManagerStub, NetworkerStub, RegistrarStub, StatisticsStub, SystemMonitorStub,
         VersionMonitorStub,
     },
+    app::Stubs,
 };
+mod api;
 mod app;
-mod zos_traits;
 use core::result::Result;
 use std::error::Error;
 mod ui;
@@ -49,41 +45,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         sys_monitor,
         network,
     };
-    // let ignore_case = env::var("IGNORE_CASE").unwrap();
     let tick_rate = Duration::from_millis(250);
-    run(stubs, tick_rate, true).await?;
-
-    // let mut recev: Receiver<NetlinkAddresses> = loop {
-    //     match network.zos_addresses().await {
-    //         Ok(recev) => {
-    //             break recev;
-    //         }
-    //         Err(err) => {
-    //             println!("Error executing version method: {}", err);
-    //             continue;
-    //         }
-    //     };
-    // };
-    // loop {
-    //     let cpu = match recev.recv().await {
-    //         Some(res) => match res {
-    //             Ok(cpu) => cpu,
-    //             Err(err) => {
-    //                 println!("Error getting ZOS IP usage: {}", err);
-    //                 continue;
-    //             }
-    //         },
-    //         None => {
-    //             println!("None");
-    //             continue;
-    //         }
-    //     };
-    //     let mut ip_str = String::from("");
-    //     for entry in cpu {
-    //         ip_str = format!("{} {}", ip_str, entry.to_string());
-    //     }
-    //     println!("ZOS IP: {}", &ip_str)
-    // }
-
+    run(stubs, tick_rate).await?;
     Ok(())
 }
