@@ -3,7 +3,7 @@ use rbus::{self, client::Receiver};
 use std::net::Ipv6Addr;
 use std::time::Duration;
 use std::{env, net::Ipv4Addr};
-use zos_traits::{IPNet, NetlinkAddresses};
+use zos_traits::NetlinkAddresses;
 
 mod zos;
 use crate::{
@@ -19,8 +19,6 @@ use core::result::Result;
 use std::error::Error;
 mod ui;
 mod zui;
-use crate::zos_traits::Capacity;
-use crate::zos_traits::Version;
 use crate::zui::run;
 
 #[tokio::main]

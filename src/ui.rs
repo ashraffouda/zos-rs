@@ -1,14 +1,13 @@
-use std::env;
 use tui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table, Wrap},
+    widgets::{Block, Borders, Paragraph, Row, Table, Wrap},
     Frame,
 };
 
-use crate::{app::App, zos_traits::Capacity};
+use crate::app::App;
 
 pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = Layout::default()
@@ -115,7 +114,7 @@ where
         .trim()
         .to_string();
     let exit_device = match &app.exit_device {
-        Ok(exit_device) => format!("{}", exit_device.to_string()),
+        Ok(exit_device) => format!("{}", exit_device),
         Err(err) => format!("{}", err),
     };
     let rows = vec![

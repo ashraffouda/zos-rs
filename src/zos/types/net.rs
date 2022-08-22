@@ -232,9 +232,9 @@ impl<'de> Deserialize<'de> for PublicConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptionPublicConfig {
     #[serde(flatten)]
-    config: PublicConfig,
+    pub config: PublicConfig,
     #[serde(rename = "HasPublicConfig")]
-    is_set: bool,
+    pub is_set: bool,
 }
 
 impl From<OptionPublicConfig> for Option<PublicConfig> {
@@ -269,6 +269,8 @@ pub enum ExitDevice {
     Single,
     #[serde(rename = "vlan")]
     Dual(String),
+    #[serde(rename = "")]
+    Unknown,
 }
 impl<'de> Deserialize<'de> for ExitDevice {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -282,6 +284,16 @@ impl<'de> Deserialize<'de> for ExitDevice {
             Ok(Self::Dual(exit.as_dual_interface))
         } else {
             Err(serde::de::Error::custom("unknown exit interface"))
+        }
+    }
+}
+
+impl Display for ExitDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::Single => write!(f, "Single"),
+            Self::Dual(_) => write!(f, "Dual"),
+            Self::Unknown => write!(f, "Unknown"),
         }
     }
 }

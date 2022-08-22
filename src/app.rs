@@ -1,10 +1,16 @@
 use anyhow::Result;
 use rbus::client::Receiver;
 
-use crate::zos_traits::{
-    Capacity, ExitDevice, IdentityManagerStub, NetlinkAddresses, NetworkerStub, OptionPublicConfig,
-    RegistrarStub, StatisticsStub, SystemMonitorStub, TimesStat, Version, VersionMonitorStub,
-    VirtualMemory,
+use crate::{
+    zos::types::{
+        net::{ExitDevice, OptionPublicConfig},
+        stats::{Capacity, TimesStat, VirtualMemory},
+        version::Version,
+    },
+    zos_traits::{
+        IdentityManagerStub, NetlinkAddresses, NetworkerStub, RegistrarStub, StatisticsStub,
+        SystemMonitorStub, VersionMonitorStub,
+    },
 };
 
 pub struct Stubs {
@@ -55,11 +61,7 @@ impl App {
             dmz_addresses: Arc::new(Mutex::new(String::from("Not Configured"))),
             ygg_addresses: Arc::new(Mutex::new(String::from("Not Configured"))),
             pub_addresses: Arc::new(Mutex::new(String::from("No public config"))),
-            exit_device: Ok(ExitDevice {
-                is_single: false,
-                is_dual: false,
-                as_dual_interface: String::from(""),
-            }),
+            exit_device: Ok(ExitDevice::Unknown),
         }
     }
 
@@ -225,8 +227,7 @@ impl App {
                     };
                     let mut zos_addresses_str = String::from("");
                     for address in zos_addresses.iter() {
-                        zos_addresses_str =
-                            format!("{} {}", &zos_addresses_str, address.to_string())
+                        zos_addresses_str = format!("{} {}", &zos_addresses_str, address)
                     }
                     *zos_addresses_state.lock().unwrap() = zos_addresses_str.trim().to_string();
                 }
@@ -331,14 +332,17 @@ impl App {
                         },
                         None => continue,
                     };
-                    if !pub_addresses.has_public_config {
+                    let mut addresses = String::from("");
+                    if !pub_addresses.is_set {
                         *pub_addresses_state.lock().unwrap() = String::from("No public config");
                     } else {
-                        *pub_addresses_state.lock().unwrap() = format!(
-                            "{} {}",
-                            pub_addresses.ipv4.to_string(),
-                            pub_addresses.ipv6.to_string()
-                        );
+                        if let Some(ipv4) = pub_addresses.config.ipv4 {
+                            addresses = format!("{}", ipv4);
+                        }
+                        if let Some(ipv6) = pub_addresses.config.ipv6 {
+                            addresses = format!("{} {}", addresses, ipv6);
+                        }
+                        *pub_addresses_state.lock().unwrap() = addresses;
                     }
                 }
             }
