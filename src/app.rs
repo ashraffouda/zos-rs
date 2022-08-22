@@ -6,10 +6,13 @@ use crate::{
         IdentityManagerStub, NetlinkAddresses, NetworkerStub, RegistrarStub, StatisticsStub,
         SystemMonitorStub, VersionMonitorStub,
     },
-    zos::types::{
-        net::{ExitDevice, OptionPublicConfig},
-        stats::{Capacity, TimesStat, VirtualMemory},
-        version::Version,
+    zos::{
+        app::flag,
+        types::{
+            net::{ExitDevice, OptionPublicConfig},
+            stats::{Capacity, TimesStat, VirtualMemory},
+            version::Version,
+        },
     },
 };
 
@@ -28,6 +31,7 @@ pub struct App {
     pub farm_id: Result<u32, rbus::protocol::Error>,
     pub exit_device: Result<ExitDevice, rbus::protocol::Error>,
     pub farm_name: Result<String, rbus::protocol::Error>,
+    pub cache_disk: bool,
     pub should_quit: bool,
     pub version: Arc<Mutex<String>>,
     pub used_mem_percent: Arc<Mutex<f64>>,
@@ -46,6 +50,7 @@ impl App {
             node_id: Ok(0),
             farm_id: Ok(0),
             farm_name: Ok(String::from("")),
+            cache_disk: false,
             should_quit: false,
             version: Arc::new(Mutex::new(String::from("0.0.0"))),
             capacity: Arc::new(Mutex::new(Capacity {
@@ -354,5 +359,6 @@ impl App {
         self.farm_id = self.stubs.identity_manager.farm_id().await;
         self.farm_name = self.stubs.identity_manager.farm().await;
         self.exit_device = self.stubs.network.get_public_exit_device().await;
+        self.cache_disk = flag::check_flag(flag::LIMITED_CACHE.to_string());
     }
 }
