@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rbus::{object, server::Sender};
 
-use crate::zos::types::{
+use crate::zos::bus::types::{
     net::{ExitDevice, IPNet, OptionPublicConfig},
     stats::{Capacity, TimesStat, VirtualMemory},
     version::Version,

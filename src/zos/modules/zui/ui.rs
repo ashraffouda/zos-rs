@@ -7,7 +7,7 @@ use tui::{
     Frame,
 };
 
-use crate::app::App;
+use super::app::App;
 
 pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = Layout::default()

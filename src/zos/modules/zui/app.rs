@@ -2,13 +2,13 @@ use anyhow::Result;
 use rbus::client::Receiver;
 
 use crate::{
-    api::{
+    zos::bus::api::{
         IdentityManagerStub, NetlinkAddresses, NetworkerStub, RegistrarStub, StatisticsStub,
         SystemMonitorStub, VersionMonitorStub,
     },
     zos::{
         app::flag,
-        types::{
+        bus::types::{
             net::{ExitDevice, OptionPublicConfig},
             stats::{Capacity, TimesStat, VirtualMemory},
             version::Version,
@@ -359,6 +359,6 @@ impl App {
         self.farm_id = self.stubs.identity_manager.farm_id().await;
         self.farm_name = self.stubs.identity_manager.farm().await;
         self.exit_device = self.stubs.network.get_public_exit_device().await;
-        self.cache_disk = flag::check_flag(flag::LIMITED_CACHE.to_string());
+        self.cache_disk = flag::check(flag::Flags::LimitedCache);
     }
 }
