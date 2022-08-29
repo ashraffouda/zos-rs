@@ -71,6 +71,12 @@ where
                 format!(" {}", app.version.lock().unwrap()),
                 Style::default().fg(Color::Blue),
             ),
+            Span::raw("(mode: "),
+            Span::styled(
+                format!("{}", app.running_mode),
+                Style::default().fg(Color::Cyan),
+            ),
+            Span::raw(")"),
         ]),
         Spans::from(vec![Span::raw("Cache Disk: "), cache_disk]),
     ];

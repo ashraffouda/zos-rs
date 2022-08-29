@@ -13,6 +13,7 @@ use crate::{
             stats::{Capacity, TimesStat, VirtualMemory},
             version::Version,
         },
+        pkg::environment::environment,
     },
 };
 
@@ -41,6 +42,7 @@ pub struct App {
     pub dmz_addresses: Arc<Mutex<String>>,
     pub ygg_addresses: Arc<Mutex<String>>,
     pub pub_addresses: Arc<Mutex<String>>,
+    pub running_mode: String,
 }
 
 impl App {
@@ -67,6 +69,7 @@ impl App {
             ygg_addresses: Arc::new(Mutex::new(String::from("Not Configured"))),
             pub_addresses: Arc::new(Mutex::new(String::from("No public config"))),
             exit_device: Ok(ExitDevice::Unknown),
+            running_mode: String::from("unknown"),
         }
     }
 
@@ -360,5 +363,9 @@ impl App {
         self.farm_name = self.stubs.identity_manager.farm().await;
         self.exit_device = self.stubs.network.get_public_exit_device().await;
         self.cache_disk = flag::check(flag::Flags::LimitedCache);
+        self.running_mode = match environment::get() {
+            Ok(env) => env.running_mode.to_string(),
+            Err(_) => String::from("Unknown"),
+        }
     }
 }
