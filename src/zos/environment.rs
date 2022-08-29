@@ -4,6 +4,12 @@ use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use super::kernel;
 
+const URLS_X: [&str; 1] = ["hello"];
+const URLS: [&str; 2] = ["hello", "workd"];
+
+fn test() {
+    let x = &URLS[..];
+}
 // possible Running modes
 #[derive(Debug)]
 pub enum RunningMode {
@@ -12,6 +18,7 @@ pub enum RunningMode {
     Test,
     Main,
 }
+
 impl Display for RunningMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -22,15 +29,18 @@ impl Display for RunningMode {
         }
     }
 }
+
 impl FromStr for RunningMode {
     type Err = ();
 
     fn from_str(input: &str) -> Result<RunningMode, Self::Err> {
         match input {
             "dev" => Ok(RunningMode::Dev),
+            "development" => Ok(RunningMode::Dev),
             "qa" => Ok(RunningMode::Qa),
             "test" => Ok(RunningMode::Test),
             "main" => Ok(RunningMode::Main),
+            "production" => Ok(RunningMode::Main),
             _ => Err(()),
         }
     }
@@ -45,7 +55,7 @@ pub struct Environment {
     pub farmer_id: i32,
     pub orphan: bool,
     pub farmer_secret: String,
-    pub substrate_url: Vec<String>,
+    pub substrate_url: &'static [&'static str],
     pub activation_url: String,
     pub extended_config_url: String,
 }
@@ -53,7 +63,7 @@ pub struct Environment {
 fn envs(run_mode: RunningMode) -> Environment {
     let env_dev = Environment {
         running_mode: RunningMode::Dev,
-        substrate_url: vec![String::from("wss://tfchain.dev.grid.tf/")],
+        substrate_url: if true { &URLS[..] } else { &URLS_X[..] },
         activation_url: String::from("https://activation.dev.grid.tf/activation/activate"),
         flist_url: String::from("redis://hub.grid.tf:9900"),
         bin_repo: String::from("tf-zos-v3-bins.dev"),
@@ -109,7 +119,7 @@ fn envs(run_mode: RunningMode) -> Environment {
     }
 }
 pub fn get() -> Result<Environment> {
-    let params = kernel::get_params();
+    let params = kernel::params();
     get_env_from_params(params)
 }
 fn get_env_from_params(params: HashMap<String, Vec<String>>) -> Result<Environment> {
