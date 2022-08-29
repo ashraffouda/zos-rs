@@ -9,12 +9,14 @@ use std::time::{Duration, Instant};
 use tui::backend::{Backend, CrosstermBackend};
 use tui::Terminal;
 
-use super::app::{App, Stubs};
-use super::ui;
-use crate::zos::bus::api::{
+use app::{App, Stubs};
+use zos::bus::api::{
     IdentityManagerStub, NetworkerStub, RegistrarStub, StatisticsStub, SystemMonitorStub,
     VersionMonitorStub,
 };
+
+mod app;
+mod ui;
 
 pub async fn run() -> Result<(), Box<dyn Error>> {
     // initialize stubs

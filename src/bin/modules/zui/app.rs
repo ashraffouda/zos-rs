@@ -1,19 +1,19 @@
 use anyhow::Result;
 use rbus::client::Receiver;
 
-use crate::{
-    zos::bus::api::{
+use zos::{
+    bus::api::{
         IdentityManagerStub, NetlinkAddresses, NetworkerStub, RegistrarStub, StatisticsStub,
         SystemMonitorStub, VersionMonitorStub,
     },
-    zos::{
+    {
         app::flag,
         bus::types::{
             net::{ExitDevice, OptionPublicConfig},
             stats::{Capacity, TimesStat, VirtualMemory},
             version::Version,
         },
-        pkg::environment::environment,
+        environment,
     },
 };
 

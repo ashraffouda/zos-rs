@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::env;
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
-use crate::zos::pkg::kernel::kernel;
+use super::kernel;
 
 // possible Running modes
 #[derive(Debug)]
