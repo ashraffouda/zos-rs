@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rbus::client::Receiver;
+use rbus::{client::Receiver, Client};
 
 use zos::{
     bus::api::{
@@ -17,17 +17,9 @@ use zos::{
     },
 };
 
-pub struct Stubs {
-    pub identity_manager: IdentityManagerStub,
-    pub registrar: RegistrarStub,
-    pub version_monitor: VersionMonitorStub,
-    pub statistics: StatisticsStub,
-    pub sys_monitor: SystemMonitorStub,
-    pub network: NetworkerStub,
-}
 use std::sync::{Arc, Mutex};
 pub struct App {
-    pub stubs: Stubs,
+    pub client: Client,
     pub node_id: Result<u32, rbus::protocol::Error>,
     pub farm_id: Result<u32, rbus::protocol::Error>,
     pub exit_device: Result<ExitDevice, rbus::protocol::Error>,
@@ -46,9 +38,9 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(stubs: Stubs) -> App {
+    pub fn new(client: Client) -> App {
         App {
-            stubs,
+            client,
             node_id: Ok(0),
             farm_id: Ok(0),
             farm_name: Ok(String::from("")),
@@ -82,8 +74,9 @@ impl App {
         }
     }
     pub async fn poll_version(&self) {
+        let version_monitor = VersionMonitorStub::new("identityd", self.client.clone());
         let mut recev: Receiver<Version> = loop {
-            match self.stubs.version_monitor.version().await {
+            match version_monitor.version().await {
                 Ok(recev) => {
                     break recev;
                 }
@@ -113,8 +106,9 @@ impl App {
         });
     }
     pub async fn poll_memory_usage(&self) {
+        let sys_monitor = SystemMonitorStub::new("node", self.client.clone());
         let mut recev: Receiver<VirtualMemory> = loop {
-            match self.stubs.sys_monitor.memory().await {
+            match sys_monitor.memory().await {
                 Ok(recev) => {
                     break recev;
                 }
@@ -144,8 +138,9 @@ impl App {
         });
     }
     pub async fn poll_cpu_usage(&self) {
+        let sys_monitor = SystemMonitorStub::new("node", self.client.clone());
         let mut recev: Receiver<TimesStat> = loop {
-            match self.stubs.sys_monitor.cpu().await {
+            match sys_monitor.cpu().await {
                 Ok(recev) => {
                     break recev;
                 }
@@ -176,8 +171,9 @@ impl App {
     }
 
     pub async fn poll_reserved_stream(&self) {
+        let statistics = StatisticsStub::new("provision", self.client.clone());
         let mut recev: Receiver<Capacity> = loop {
-            match self.stubs.statistics.reserved().await {
+            match statistics.reserved().await {
                 Ok(recev) => {
                     break recev;
                 }
@@ -208,8 +204,9 @@ impl App {
     }
 
     pub async fn poll_zos_addresses(&self) {
+        let network = NetworkerStub::new("network", self.client.clone());
         let mut recev: Receiver<NetlinkAddresses> = loop {
-            match self.stubs.network.zos_addresses().await {
+            match network.zos_addresses().await {
                 Ok(recev) => {
                     break recev;
                 }
@@ -243,8 +240,9 @@ impl App {
         });
     }
     pub async fn poll_dmz_addresses(&self) {
+        let network = NetworkerStub::new("network", self.client.clone());
         let mut recev: Receiver<NetlinkAddresses> = loop {
-            match self.stubs.network.dmz_addresses().await {
+            match network.dmz_addresses().await {
                 Ok(recev) => {
                     break recev;
                 }
@@ -279,8 +277,9 @@ impl App {
         });
     }
     pub async fn poll_ygg_addresses(&self) {
+        let network = NetworkerStub::new("network", self.client.clone());
         let mut recev: Receiver<NetlinkAddresses> = loop {
-            match self.stubs.network.ygg_addresses().await {
+            match network.ygg_addresses().await {
                 Ok(recev) => {
                     break recev;
                 }
@@ -315,8 +314,9 @@ impl App {
         });
     }
     pub async fn poll_public_addresses(&self) {
+        let network = NetworkerStub::new("network", self.client.clone());
         let mut recev: Receiver<OptionPublicConfig> = loop {
-            match self.stubs.network.public_addresses().await {
+            match network.public_addresses().await {
                 Ok(recev) => {
                     break recev;
                 }
@@ -358,13 +358,16 @@ impl App {
     }
     pub async fn on_tick(&mut self) {
         // Update progress
-        self.node_id = self.stubs.registrar.node_id().await;
-        self.farm_id = self.stubs.identity_manager.farm_id().await;
-        self.farm_name = self.stubs.identity_manager.farm().await;
-        self.exit_device = self.stubs.network.get_public_exit_device().await;
+        let registrar = RegistrarStub::new("registrar", self.client.clone());
+        self.node_id = registrar.node_id().await;
+        let identity_manager = IdentityManagerStub::new("identityd", self.client.clone());
+        self.farm_id = identity_manager.farm_id().await;
+        self.farm_name = identity_manager.farm().await;
+        let network = NetworkerStub::new("network", self.client.clone());
+        self.exit_device = network.get_public_exit_device().await;
         self.cache_disk = flag::check(flag::Flags::LimitedCache);
         self.running_mode = match environment::get() {
-            Ok(env) => env.running_mode.to_string(),
+            Ok(env) => env.run_mode.to_string(),
             Err(_) => String::from("Unknown"),
         }
     }

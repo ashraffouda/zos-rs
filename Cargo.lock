@@ -1041,6 +1041,7 @@ dependencies = [
  "hex",
  "hexdump",
  "ipnet",
+ "lazy_static",
  "log",
  "rbus",
  "rmp-serde 1.1.0",
