@@ -21,7 +21,18 @@ impl Params {
             },
         }
     }
+
+    pub fn value<S: AsRef<str>>(&self, k: S) -> Option<&str> {
+        match self.0.get(k.as_ref()) {
+            None => None,
+            Some(v) => match v {
+                Some(v) if v.len() > 0 => Some(v[v.len() - 1].as_str()),
+                _ => None,
+            },
+        }
+    }
 }
+
 fn parse_params(content: String) -> Params {
     let mut params_map = HashMap::new();
     for option in content.trim().split(" ") {

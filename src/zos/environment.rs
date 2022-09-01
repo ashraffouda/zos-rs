@@ -1,30 +1,14 @@
-use anyhow::Result;
+use anyhow::{Context, Error, Result};
 use std::env;
 use std::{fmt::Display, str::FromStr};
 
 use super::kernel;
 lazy_static! {
-    static ref DEV_SUBSTRATE_URL: Vec<String> = vec![String::from("wss://tfchain.dev.grid.tf/")];
-    static ref QA_SUBSTRATE_URL: Vec<String> = vec![String::from("wss://tfchain.qa.grid.tf/")];
-    static ref PROD_SUBSTRATE_URL: Vec<String> = vec![
-        String::from("wss://tfchain.grid.tf/"),
-        String::from("wss://02.tfchain.grid.tf/"),
-        String::from("wss://03.tfchain.grid.tf/"),
-        String::from("wss://04.tfchain.grid.tf/"),
-    ];
-    static ref FLIST_URL: &'static str = "redis://hub.grid.tf:9900";
-    static ref DEV_ACTIVATION_URL: &'static str =
-        "https://activation.dev.grid.tf/activation/activate";
-    static ref QA_ACTIVATION_URL: &'static str =
-        "https://activation.qa.grid.tf/activation/activate";
-    static ref PROD_ACTIVATION_URL: &'static str = "https://activation.grid.tf/activation/activate";
-    static ref DEV_BIN_REPO: &'static str = "tf-zos-v3-bins.dev";
-    static ref QA_BIN_REPO: &'static str = "tf-zos-v3-bins.qanet";
-    static ref PROD_BIN_REPO: &'static str = "tf-zos-v3-bins";
+    pub static ref ENVIRONMENT: Environment = get().unwrap();
 }
 
 // possible Running modes
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum RunMode {
     Dev,
     Qa,
@@ -46,7 +30,7 @@ impl Display for RunMode {
 impl FromStr for RunMode {
     type Err = &'static str;
 
-    fn from_str(input: &str) -> Result<RunMode, Self::Err> {
+    fn from_str(input: &str) -> std::result::Result<RunMode, Self::Err> {
         match input {
             "dev" => Ok(RunMode::Dev),
             "development" => Ok(RunMode::Dev),
@@ -54,7 +38,7 @@ impl FromStr for RunMode {
             "test" => Ok(RunMode::Test),
             "main" => Ok(RunMode::Main),
             "production" => Ok(RunMode::Main),
-            _ => Err("Invalid Running mode"),
+            _ => Err("invalid run mode"),
         }
     }
 }
@@ -65,132 +49,118 @@ pub struct Environment {
     pub run_mode: RunMode,
     pub flist_url: String,
     pub bin_repo: String,
-    pub farmer_id: i32,
-    pub orphan: bool,
-    pub farmer_secret: String,
+    pub farmer_id: Option<u32>,
+    pub farmer_secret: Option<String>,
     pub substrate_url: Vec<String>,
     pub activation_url: String,
-    pub extended_config_url: String,
+    pub extended_config_url: Option<String>,
 }
-fn get_env(run_mode: RunMode) -> Environment {
+
+fn default(run_mode: RunMode) -> Environment {
     Environment {
-        flist_url: (*FLIST_URL).to_string(),
-        farmer_id: 0,
-        orphan: true,
-        extended_config_url: String::from("Unknown"),
-        farmer_secret: String::from("Unknown"),
-        run_mode: match run_mode {
-            RunMode::Dev => RunMode::Dev,
-            RunMode::Qa => RunMode::Qa,
-            RunMode::Test => RunMode::Test,
-            RunMode::Main => RunMode::Main,
-        },
-        bin_repo: match &run_mode {
-            RunMode::Dev => (*DEV_BIN_REPO).to_string(),
-            RunMode::Qa => (*QA_BIN_REPO).to_string(),
-            RunMode::Test => (*QA_BIN_REPO).to_string(),
-            RunMode::Main => (*PROD_BIN_REPO).to_string(),
+        flist_url: "redis://hub.grid.tf:9900".into(),
+        farmer_id: None,
+        extended_config_url: None,
+        farmer_secret: None,
+        run_mode: run_mode.clone(),
+        bin_repo: match run_mode {
+            RunMode::Dev => "tf-zos-v3-bins.dev".into(),
+            RunMode::Qa => "tf-zos-v3-bins.qanet".into(),
+            RunMode::Test => "tf-zos-v3-bins.test".into(),
+            RunMode::Main => "tf-zos-v3-bins".into(),
         },
         substrate_url: match run_mode {
-            RunMode::Dev => DEV_SUBSTRATE_URL.iter().map(|s| s.to_string()).collect(),
-            RunMode::Qa => QA_SUBSTRATE_URL.iter().map(|s| s.to_string()).collect(),
-            RunMode::Test => QA_SUBSTRATE_URL.iter().map(|s| s.to_string()).collect(),
-            RunMode::Main => PROD_SUBSTRATE_URL.iter().map(|s| s.to_string()).collect(),
+            RunMode::Dev => vec!["wss://tfchain.dev.grid.tf/".into()],
+            RunMode::Qa => vec!["wss://tfchain.qa.grid.tf/".into()],
+            RunMode::Test => vec!["wss://tfchain.test.grid.tf/".into()],
+            RunMode::Main => vec![
+                "wss://tfchain.grid.tf/".into(),
+                "wss://02.tfchain.grid.tf/".into(),
+                "wss://03.tfchain.grid.tf/".into(),
+                "wss://04.tfchain.grid.tf/".into(),
+            ],
         },
         activation_url: match run_mode {
-            RunMode::Dev => (*DEV_ACTIVATION_URL).to_string(),
-            RunMode::Qa => (*QA_ACTIVATION_URL).to_string(),
-            RunMode::Test => (*QA_ACTIVATION_URL).to_string(),
-            RunMode::Main => (*PROD_ACTIVATION_URL).to_string(),
+            RunMode::Dev => "https://activation.dev.grid.tf/activation/activate".into(),
+            RunMode::Qa => "https://activation.qa.grid.tf/activation/activate".into(),
+            RunMode::Test => "https://activation.test.grid.tf/activation/activate".into(),
+            RunMode::Main => "https://activation.grid.tf/activation/activate".into(),
         },
     }
 }
 
-pub fn get() -> Result<Environment> {
+fn get() -> Result<Environment> {
     let params = kernel::get();
-    get_env_from_params(params)
+    from_params(params)
 }
-fn get_env_from_params(params: kernel::Params) -> Result<Environment> {
-    let run_mode = match params.values("runmode") {
-        Some(runmode) => {
-            if runmode.len() > 0 {
-                runmode[0].clone()
-            } else {
-                "main".to_string()
-            }
-        }
-        None => match env::var("ZOS_RUNMODE") {
-            Ok(run_mode) => run_mode,
-            Err(_) => "Unknown".to_string(),
-        },
+
+fn from_params(params: kernel::Params) -> Result<Environment> {
+    let mut run_mode: RunMode = match params.value("runmode") {
+        Some(runmode) => runmode
+            .parse()
+            .map_err(Error::msg)
+            .context("failed to parse runmode from kernel cmdline")?,
+        None => RunMode::Main,
     };
 
-    let run_mode = RunMode::from_str(&run_mode).unwrap();
-    let mut env = get_env(run_mode);
-    if let Some(extended) = params.values("config_url") {
-        if extended.len() > 0 {
-            env.extended_config_url = extended[0].clone();
-        }
+    if let Ok(mode) = env::var("ZOS_RUNMODE") {
+        run_mode = mode
+            .parse()
+            .map_err(Error::msg)
+            .context("failed to parse runmode from ENV")?;
+    };
+
+    let mut env = default(run_mode);
+    if let Some(extended) = params.value("config_url") {
+        env.extended_config_url = Some(extended.into());
     }
 
-    if let Some(substrate) = params.values("substrate") {
-        if substrate.len() > 0 {
-            env.substrate_url = substrate.to_vec();
-        }
-    };
-    match params.values("activation") {
-        Some(activation) => {
-            if activation.len() > 0 {
-                env.activation_url = activation[activation.len() - 1].clone();
-            }
-        }
-        None => {}
+    if let Some(substrate) = params.value("substrate") {
+        env.substrate_url = vec![substrate.into()];
     };
 
-    match params.values("secret") {
-        Some(farm_secret) => {
-            if farm_secret.len() > 0 {
-                env.farmer_secret = farm_secret[farm_secret.len() - 1].clone();
-            }
-        }
-        None => {}
-    };
+    if let Some(activation) = params.value("activation") {
+        env.activation_url = activation.into();
+    }
 
-    match params.values("farmer_id") {
-        Some(farmer_id) => {
-            if farmer_id.len() < 1 {
-                env.orphan = true;
-                env.farmer_id = 0;
-            } else {
-                env.orphan = false;
-                let id = farmer_id[0].parse::<i32>()?;
-                env.farmer_id = id;
-            }
-        }
-        None => {
-            env.orphan = true;
-            env.farmer_id = 0;
-        }
-    };
+    if let Some(secret) = params.value("secret") {
+        env.farmer_secret = Some(secret.into());
+    }
+
+    if let Some(id) = params.value("farmer_id") {
+        env.farmer_id = Some(id.parse().context("invalid farmer id not numeric")?);
+    }
 
     // Checking if there environment variable
     // override default settings
-    match env::var("ZOS_SUBSTRATE_URL") {
+    if let Ok(substrate_url) = env::var("ZOS_SUBSTRATE_URL") {
         // let urls: Vec<&str> =  substrate.iter().map(|s| s as &str).collect();
-        Ok(substrate_url) => {
-            env.substrate_url = vec![substrate_url];
-        }
-        Err(_) => {}
-    };
-    match env::var("ZOS_FLIST_URL") {
-        Ok(flist_url) => env.flist_url = flist_url,
-        Err(_) => {}
-    };
+        env.substrate_url = vec![substrate_url];
+    }
 
-    match env::var("ZOS_BIN_REPO") {
-        Ok(bin_repo) => env.bin_repo = bin_repo,
-        Err(_) => {}
+    if let Ok(flist_url) = env::var("ZOS_FLIST_URL") {
+        env.flist_url = flist_url;
+    }
+
+    if let Ok(bin_repo) = env::var("ZOS_BIN_REPO") {
+        env.bin_repo = bin_repo;
     };
 
     Ok(env)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::environment::RunMode;
+
+    #[test]
+    fn get_env() {
+        use super::ENVIRONMENT;
+        assert_eq!(ENVIRONMENT.run_mode, RunMode::Main);
+        assert_eq!(
+            ENVIRONMENT.activation_url,
+            "https://activation.grid.tf/activation/activate"
+        );
+        assert_eq!(ENVIRONMENT.substrate_url.len(), 4);
+    }
 }
