@@ -3,7 +3,7 @@ use std::env;
 use std::{fmt::Display, str::FromStr};
 
 use super::kernel;
-lazy_static! {
+lazy_static::lazy_static! {
     // #[allow(non_upper_case_globals)]
     // I wanted to call it `runtime` instead of RUNTIME
     // but seems the allow non_upper_case_globals does not work

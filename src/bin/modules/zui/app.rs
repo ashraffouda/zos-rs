@@ -2,12 +2,9 @@ use anyhow::Result;
 use rbus::{client::Receiver, Client};
 
 use zos::{
-    bus::api::{
-        IdentityManagerStub, NetlinkAddresses, NetworkerStub, RegistrarStub, StatisticsStub,
-        SystemMonitorStub, VersionMonitorStub,
-    },
+    bus::api::{self, NetlinkAddresses},
     {
-        app::flag,
+        app::flags,
         bus::types::{
             net::{ExitDevice, OptionPublicConfig},
             stats::{Capacity, TimesStat, VirtualMemory},
@@ -74,7 +71,7 @@ impl App {
         }
     }
     pub async fn poll_version(&self) {
-        let version_monitor = VersionMonitorStub::new("identityd", self.client.clone());
+        let version_monitor = api::VersionMonitorStub::new("identityd", self.client.clone());
         let mut recev: Receiver<Version> = loop {
             match version_monitor.version().await {
                 Ok(recev) => {
@@ -106,7 +103,7 @@ impl App {
         });
     }
     pub async fn poll_memory_usage(&self) {
-        let sys_monitor = SystemMonitorStub::new("node", self.client.clone());
+        let sys_monitor = api::SystemMonitorStub::new("node", self.client.clone());
         let mut recev: Receiver<VirtualMemory> = loop {
             match sys_monitor.memory().await {
                 Ok(recev) => {
@@ -138,7 +135,7 @@ impl App {
         });
     }
     pub async fn poll_cpu_usage(&self) {
-        let sys_monitor = SystemMonitorStub::new("node", self.client.clone());
+        let sys_monitor = api::SystemMonitorStub::new("node", self.client.clone());
         let mut recev: Receiver<TimesStat> = loop {
             match sys_monitor.cpu().await {
                 Ok(recev) => {
@@ -171,7 +168,7 @@ impl App {
     }
 
     pub async fn poll_reserved_stream(&self) {
-        let statistics = StatisticsStub::new("provision", self.client.clone());
+        let statistics = api::StatisticsStub::new("provision", self.client.clone());
         let mut recev: Receiver<Capacity> = loop {
             match statistics.reserved().await {
                 Ok(recev) => {
@@ -204,7 +201,7 @@ impl App {
     }
 
     pub async fn poll_zos_addresses(&self) {
-        let network = NetworkerStub::new("network", self.client.clone());
+        let network = api::NetworkerStub::new("network", self.client.clone());
         let mut recev: Receiver<NetlinkAddresses> = loop {
             match network.zos_addresses().await {
                 Ok(recev) => {
@@ -240,7 +237,7 @@ impl App {
         });
     }
     pub async fn poll_dmz_addresses(&self) {
-        let network = NetworkerStub::new("network", self.client.clone());
+        let network = api::NetworkerStub::new("network", self.client.clone());
         let mut recev: Receiver<NetlinkAddresses> = loop {
             match network.dmz_addresses().await {
                 Ok(recev) => {
@@ -277,7 +274,7 @@ impl App {
         });
     }
     pub async fn poll_ygg_addresses(&self) {
-        let network = NetworkerStub::new("network", self.client.clone());
+        let network = api::NetworkerStub::new("network", self.client.clone());
         let mut recev: Receiver<NetlinkAddresses> = loop {
             match network.ygg_addresses().await {
                 Ok(recev) => {
@@ -314,7 +311,7 @@ impl App {
         });
     }
     pub async fn poll_public_addresses(&self) {
-        let network = NetworkerStub::new("network", self.client.clone());
+        let network = api::NetworkerStub::new("network", self.client.clone());
         let mut recev: Receiver<OptionPublicConfig> = loop {
             match network.public_addresses().await {
                 Ok(recev) => {
@@ -358,14 +355,14 @@ impl App {
     }
     pub async fn on_tick(&mut self) {
         // Update progress
-        let registrar = RegistrarStub::new("registrar", self.client.clone());
+        let registrar = api::RegistrarStub::new("registrar", self.client.clone());
         self.node_id = registrar.node_id().await;
-        let identity_manager = IdentityManagerStub::new("identityd", self.client.clone());
+        let identity_manager = api::IdentityManagerStub::new("identityd", self.client.clone());
         self.farm_id = identity_manager.farm_id().await;
         self.farm_name = identity_manager.farm().await;
-        let network = NetworkerStub::new("network", self.client.clone());
+        let network = api::NetworkerStub::new("network", self.client.clone());
         self.exit_device = network.get_public_exit_device().await;
-        self.cache_disk = flag::check(flag::Flags::LimitedCache);
+        self.cache_disk = flags::check(flags::Flags::LimitedCache);
         self.running_mode = env::RUNTIME.mode.to_string();
     }
 }
