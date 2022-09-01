@@ -14,11 +14,8 @@ impl Params {
     // if key exists but has no values, will return None. you can check if key exist with exists method
     pub fn values<S: AsRef<str>>(&self, k: S) -> Option<&Vec<String>> {
         match self.0.get(k.as_ref()) {
-            None => None,
-            Some(v) => match v {
-                None => None,
-                Some(v) => Some(v),
-            },
+            Some(Some(v)) => Some(v),
+            _ => None,
         }
     }
 
