@@ -4,7 +4,8 @@ use std::{fmt::Display, str::FromStr};
 
 use super::kernel;
 lazy_static! {
-    pub static ref ENVIRONMENT: Environment = get().unwrap();
+    #[allow(non_upper_case_globals)]
+    pub static ref runtime: Environment = get().unwrap();
 }
 
 // possible Running modes
@@ -155,12 +156,12 @@ mod test {
 
     #[test]
     fn get_env() {
-        use super::ENVIRONMENT;
-        assert_eq!(ENVIRONMENT.run_mode, RunMode::Main);
+        use super::runtime;
+        assert_eq!(runtime.run_mode, RunMode::Main);
         assert_eq!(
-            ENVIRONMENT.activation_url,
+            runtime.activation_url,
             "https://activation.grid.tf/activation/activate"
         );
-        assert_eq!(ENVIRONMENT.substrate_url.len(), 4);
+        assert_eq!(runtime.substrate_url.len(), 4);
     }
 }
