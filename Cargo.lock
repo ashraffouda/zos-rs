@@ -381,6 +381,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
+source = "git+https://github.com/threefoldtech/rbus?branch=main#3b271cefa952af3a6c0795108ce38c69715483f6"
 dependencies = [
  "quote",
  "syn",
@@ -529,6 +530,7 @@ dependencies = [
 [[package]]
 name = "rbus"
 version = "0.1.0"
+source = "git+https://github.com/threefoldtech/rbus?branch=main#3b271cefa952af3a6c0795108ce38c69715483f6"
 dependencies = [
  "anyhow",
  "async-trait",

@@ -12,7 +12,7 @@ path = "src/bin/main.rs"
 name = "zos"
 
 [dependencies]
-rbus = {path="../rbus"}
+rbus = {git="https://github.com/threefoldtech/rbus", branch="main"}
 async-trait = "0.1.51"
 anyhow = "1.0.44"
 tokio = { version = "1.11.0", features = ["full"] }

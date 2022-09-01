@@ -9,7 +9,7 @@ use crate::bus::types::{
 
 type FarmID = u32;
 
-#[object(name = "manager", version = "0.0.1")]
+#[object(module = "identityd", name = "manager", version = "0.0.1")]
 pub trait IdentityManager {
     #[rename("FarmID")]
     fn farm_id(&self) -> Result<FarmID>;
@@ -17,13 +17,7 @@ pub trait IdentityManager {
     fn farm(&self) -> Result<String>;
 }
 
-#[object(name = "registrar", version = "0.0.1")]
-pub trait Registrar {
-    #[rename("NodeID")]
-    fn node_id(&self) -> Result<u32>;
-}
-
-#[object(name = "monitor", version = "0.0.1")]
+#[object(module = "identityd", name = "monitor", version = "0.0.1")]
 #[async_trait::async_trait]
 pub trait VersionMonitor {
     #[rename("Version")]
@@ -31,7 +25,13 @@ pub trait VersionMonitor {
     async fn version(&self, rec: Sender<Version>);
 }
 
-#[object(name = "statistics", version = "0.0.1")]
+#[object(module = "registrar", name = "registrar", version = "0.0.1")]
+pub trait Registrar {
+    #[rename("NodeID")]
+    fn node_id(&self) -> Result<u32>;
+}
+
+#[object(module = "provision", name = "statistics", version = "0.0.1")]
 #[async_trait::async_trait]
 pub trait Statistics {
     #[rename("ReservedStream")]
@@ -39,7 +39,7 @@ pub trait Statistics {
     async fn reserved(&self, rec: Sender<Capacity>);
 }
 
-#[object(name = "system", version = "0.0.1")]
+#[object(module = "node", name = "system", version = "0.0.1")]
 #[async_trait::async_trait]
 pub trait SystemMonitor {
     #[rename("CPU")]
@@ -51,7 +51,7 @@ pub trait SystemMonitor {
 }
 
 pub type NetlinkAddresses = Vec<IPNet>;
-#[object(name = "network", version = "0.0.1")]
+#[object(module = "network", name = "network", version = "0.0.1")]
 #[async_trait::async_trait]
 pub trait Networker {
     #[rename("ZOSAddresses")]
