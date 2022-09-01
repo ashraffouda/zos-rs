@@ -47,8 +47,8 @@ impl FromStr for RunMode {
 // it defines the different constant based on the running mode (dev, test, prod)
 #[derive(Debug, Clone)]
 pub struct Environment {
-    pub run_mode: RunMode,
-    pub flist_url: String,
+    pub mode: RunMode,
+    pub storage_url: String,
     pub bin_repo: String,
     pub farmer_id: Option<u32>,
     pub farmer_secret: Option<String>,
@@ -59,11 +59,11 @@ pub struct Environment {
 
 fn default(run_mode: RunMode) -> Environment {
     Environment {
-        flist_url: "redis://hub.grid.tf:9900".into(),
+        storage_url: "redis://hub.grid.tf:9900".into(),
         farmer_id: None,
         extended_config_url: None,
         farmer_secret: None,
-        run_mode: run_mode.clone(),
+        mode: run_mode.clone(),
         bin_repo: match run_mode {
             RunMode::Dev => "tf-zos-v3-bins.dev".into(),
             RunMode::Qa => "tf-zos-v3-bins.qanet".into(),
@@ -140,7 +140,7 @@ fn from_params(params: kernel::Params) -> Result<Environment> {
     }
 
     if let Ok(flist_url) = env::var("ZOS_FLIST_URL") {
-        env.flist_url = flist_url;
+        env.storage_url = flist_url;
     }
 
     if let Ok(bin_repo) = env::var("ZOS_BIN_REPO") {
@@ -152,12 +152,12 @@ fn from_params(params: kernel::Params) -> Result<Environment> {
 
 #[cfg(test)]
 mod test {
-    use crate::environment::RunMode;
+    use crate::env::RunMode;
 
     #[test]
     fn get_env() {
         use super::runtime;
-        assert_eq!(runtime.run_mode, RunMode::Main);
+        assert_eq!(runtime.mode, RunMode::Main);
         assert_eq!(
             runtime.activation_url,
             "https://activation.grid.tf/activation/activate"
