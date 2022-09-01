@@ -4,8 +4,12 @@ use std::{fmt::Display, str::FromStr};
 
 use super::kernel;
 lazy_static! {
-    #[allow(non_upper_case_globals)]
-    pub static ref runtime: Environment = get().unwrap();
+    // #[allow(non_upper_case_globals)]
+    // I wanted to call it `runtime` instead of RUNTIME
+    // but seems the allow non_upper_case_globals does not work
+    // with lazy_static for some reason.
+    // TODO
+    pub static ref RUNTIME: Environment = get().unwrap();
 }
 
 // possible Running modes
@@ -156,12 +160,12 @@ mod test {
 
     #[test]
     fn get_env() {
-        use super::runtime;
-        assert_eq!(runtime.mode, RunMode::Main);
+        use super::RUNTIME;
+        assert_eq!(RUNTIME.mode, RunMode::Main);
         assert_eq!(
-            runtime.activation_url,
+            RUNTIME.activation_url,
             "https://activation.grid.tf/activation/activate"
         );
-        assert_eq!(runtime.substrate_url.len(), 4);
+        assert_eq!(RUNTIME.substrate_url.len(), 4);
     }
 }

@@ -366,6 +366,6 @@ impl App {
         let network = NetworkerStub::new("network", self.client.clone());
         self.exit_device = network.get_public_exit_device().await;
         self.cache_disk = flag::check(flag::Flags::LimitedCache);
-        self.running_mode = env::runtime.mode.to_string();
+        self.running_mode = env::RUNTIME.mode.to_string();
     }
 }
