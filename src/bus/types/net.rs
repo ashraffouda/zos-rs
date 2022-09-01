@@ -145,7 +145,7 @@ impl From<GoIPNet> for Option<IPNet> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum InterfaceType {
     #[serde(rename = "vlan")]
     VLan,
