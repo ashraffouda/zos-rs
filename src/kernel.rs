@@ -78,8 +78,8 @@ pub fn get() -> Params {
     parse_params(content)
 }
 
+#[cfg(test)]
 mod test {
-
     use crate::kernel::parse_params;
 
     #[test]
