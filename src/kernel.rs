@@ -93,6 +93,8 @@ mod test {
                 String::from("ttyS1,115200n8")
             ]
         );
+        assert_eq!(params.values("zos-debug-vm"), None);
+        assert_eq!(params.value("zos-debug-vm"), None);
         assert_eq!(params.exists("zos-debug-vm"), true);
         assert_eq!(
             params.values("kvm-intel.nested").unwrap(),
