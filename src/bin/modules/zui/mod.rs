@@ -9,41 +9,15 @@ use std::time::{Duration, Instant};
 use tui::backend::{Backend, CrosstermBackend};
 use tui::Terminal;
 
-use super::app::{App, Stubs};
-use super::ui;
-use crate::zos::bus::api::{
-    IdentityManagerStub, NetworkerStub, RegistrarStub, StatisticsStub, SystemMonitorStub,
-    VersionMonitorStub,
-};
+use app::App;
+
+mod app;
+mod ui;
 
 pub async fn run() -> Result<(), Box<dyn Error>> {
     // initialize stubs
-    const IDENTITY_MOD: &str = "identityd";
     let client = rbus::Client::new("redis://0.0.0.0:6379").await.unwrap();
 
-    let identity_manager = IdentityManagerStub::new(IDENTITY_MOD, client.clone());
-    let version_monitor = VersionMonitorStub::new(IDENTITY_MOD, client.clone());
-
-    const REGISTRAR_MOD: &str = "registrar";
-    let registrar = RegistrarStub::new(REGISTRAR_MOD, client.clone());
-
-    const PROVISION_MOD: &str = "provision";
-    let statistics = StatisticsStub::new(PROVISION_MOD, client.clone());
-
-    const NODE_MOD: &str = "node";
-    let sys_monitor = SystemMonitorStub::new(NODE_MOD, client.clone());
-
-    const NETWORK_MOD: &str = "network";
-    let network = NetworkerStub::new(NETWORK_MOD, client.clone());
-
-    let stubs = Stubs {
-        identity_manager,
-        registrar,
-        version_monitor,
-        statistics,
-        sys_monitor,
-        network,
-    };
     let tick_rate = Duration::from_millis(250);
 
     // setup terminal
@@ -54,7 +28,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let app = App::new(stubs);
+    let app = App::new(client);
     // spawn poll services
     app.poll_version().await;
     app.poll_reserved_stream().await;

@@ -381,6 +381,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
+source = "git+https://github.com/threefoldtech/rbus?branch=main#3b271cefa952af3a6c0795108ce38c69715483f6"
 dependencies = [
  "quote",
  "syn",
@@ -529,6 +530,7 @@ dependencies = [
 [[package]]
 name = "rbus"
 version = "0.1.0"
+source = "git+https://github.com/threefoldtech/rbus?branch=main#3b271cefa952af3a6c0795108ce38c69715483f6"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -659,6 +661,12 @@ dependencies = [
  "ryu",
  "serde",
 ]
+
+[[package]]
+name = "shlex"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43b2853a4d09f215c24cc5489c992ce46052d359b5109343cbafbf26bc62f8a3"
 
 [[package]]
 name = "signal-hook"
@@ -1041,11 +1049,13 @@ dependencies = [
  "hex",
  "hexdump",
  "ipnet",
+ "lazy_static",
  "log",
  "rbus",
  "rmp-serde 1.1.0",
  "serde",
  "serde_bytes",
+ "shlex",
  "tokio",
  "tui",
 ]
