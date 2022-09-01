@@ -35,30 +35,33 @@ impl Params {
 
 fn parse_params(content: String) -> Params {
     let mut params_map = HashMap::new();
-    for option in content.trim().split(" ") {
-        let mut parts = option.splitn(2, "=").into_iter();
-        // use this to make sure element exists
-        let key = match parts.next() {
-            Some(key) => key,
-            None => continue,
-        };
+    if let Some(cmdline) = shlex::split(&content) {
+        for option in cmdline {
+            let mut parts = option.splitn(2, "=").into_iter();
+            // use this to make sure element exists
+            let key = match parts.next() {
+                Some(key) => key,
+                None => continue,
+            };
 
-        match params_map.entry(key.to_string()) {
-            Entry::Vacant(e) => {
-                match parts.next() {
-                    Some(value) => e.insert(Some(vec![value.to_string()])),
-                    None => e.insert(None),
-                };
-            }
-            Entry::Occupied(mut e) => match parts.next() {
-                Some(value) => match e.get_mut() {
-                    Some(old_value) => old_value.push(value.to_string()),
+            match params_map.entry(key.to_string()) {
+                Entry::Vacant(e) => {
+                    match parts.next() {
+                        Some(value) => e.insert(Some(vec![value.to_string()])),
+                        None => e.insert(None),
+                    };
+                }
+                Entry::Occupied(mut e) => match parts.next() {
+                    Some(value) => match e.get_mut() {
+                        Some(old_value) => old_value.push(value.to_string()),
+                        None => continue,
+                    },
                     None => continue,
                 },
-                None => continue,
-            },
+            }
         }
     }
+
     Params(params_map)
 }
 
@@ -73,4 +76,32 @@ pub fn get() -> Params {
     };
 
     parse_params(content)
+}
+
+mod test {
+
+    use crate::kernel::parse_params;
+
+    #[test]
+    fn test_parse_params() {
+        let content = "intel_iommu=on kvm-intel.nested=1 console=ttyS1,115200n8 console=tty1 consoleblank=0 earlyprintk=serial,ttyS1,115200n8 loglevel=7 console=ttyS1,115200n8 zos-debug zos-debug-vm farmer_id=11 runmode=dev version=v3 nomodeset";
+        let params = parse_params(content.into());
+        let console_values = params.values("console").unwrap();
+        assert_eq!(console_values.len(), 3);
+        assert_eq!(
+            console_values,
+            &vec![
+                String::from("ttyS1,115200n8"),
+                String::from("tty1"),
+                String::from("ttyS1,115200n8")
+            ]
+        );
+        assert_eq!(params.exists("zos-debug-vm"), true);
+        assert_eq!(
+            params.values("kvm-intel.nested").unwrap(),
+            &vec![String::from("1")]
+        );
+
+        assert_eq!(params.value("farmer_id").unwrap(), String::from("11"));
+    }
 }
